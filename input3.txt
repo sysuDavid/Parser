@@ -1,0 +1,112 @@
+CREATE TABLE Student(sid INT,sex INT DEFAULT = 0, age INT DEFAULT = 18, PRIMARY KEY (sid));
+CREATE TABLE _StudentM(sid INT,sex INT DEFAULT = 0, age INT DEFAULT = 18, PRIMARY KEY (sid));
+CREATE TABLE Stu_de_ntN(sid INT,sex INT DEFAULT = 0, age INT DEFAULT = 18, PRIMARY KEY (sid));
+CREATE TABLE StudentRR_(sid INT,sex INT DEFAULT = 0, age INT DEFAULT = 18, PRIMARY KEY (sid));
+CREATE TABLE Student(age INT DEFAULT = 18, sid INT,sex INT DEFAULT = 0, PRIMARY KEY (sid));
+
+CREATE TABLE Stude77nt2(sid INT,sex, age INT DEFAULT = 18, PRIMARY KEY (sid));
+CREATE TABLE Stud5ent2(sid INT,abc DEFAULT = .18, age INT DEFA$ULT = */18, PRIMARY KEY (sid));
+CREATE TABLE Stude6nt2(sid INT,s**()x DEFAULT = 1, age INT DEFAULT = /18);
+CREATE TABLE StudentM sid INT,sex INT DEFAULT = 0, age INT DEFAULT = 18 ;
+CREATE TABLE StudentSDF(sid INT sex INT DEFAULT = 0, age INT DEFAULT = 18);
+
+
+CREATE TABLE Student3(sid INT,sex INT DEFAULT = 6 * 3 / 2 + 1, age INT DEFAULT = 2 * 3 - 6 / 2, PRIMARY KEY (sid));
+CREATE TABLE Student4(sid INT,sex INT DEFAULT = -1, age INT DEFAULT = +12, PRIMARY KEY (sid));
+
+
+CREATE TABLE Student5(sid INT,sex INT DEFAULT = 6 * 3 / 5, age INT DEFAULT = 32 * 3 - 6 / 2, PRIMARY KEY (sid));
+
+
+CREATE TABLE Employee123(group INT, num INT, age INT DEFAULT = 18, PRIMARY KEY (group,num));
+CREATE TABLE Employee(group INT, num INT, age INT DEFAULT = 18, sex INT DEFAULT = 0, PRIMARY KEY (group,num,sex));
+
+
+
+INSERT INTO Student(sid,sex,age) VALUES(12330001,0,10);
+INSERT INTO Student(sid,sex,age) VALUES(12330002,1,11);
+INSERT INTO Student(sid,sex,age) VALUES(12330003,0,12);
+
+
+INSERT INTO Student(sex,age,sid) VALUES(1,13,12330004);
+INSERT INTO Student(sex,sid,age) VALUES(0,12330005,14);
+INSERT INTO Student(age,sid,sex) VALUES(15,12330006,1);
+
+
+INSERT INTO Student(sid,sex,age) VALUES(12330004,1,13);
+
+
+INSERT INTO Student(sid) VALUES(12330007);
+INSERT INTO Student(sex,sid) VALUES(1,12330008);
+INSERT INTO Student(sid,age) VALUES(12330009,19);
+
+
+INSERT INTO Student(sid,sex,age) VALUES(12330010,1,6 * 3 / 2 + 1);
+INSERT INTO Student(age,sid) VALUES(3*9-6/2,12330011);
+INSERT INTO Student(sid,sex,age) VALUES(12330012,1,-333);
+
+
+INSERT INTO Student(sid) VALUES(12330013,1,+2);
+INSERT INTO Student(sid) VALUES(12330013,7);
+
+
+INSERT INTO Student(sid,sex,age) VALUES(12330013,0,6 * 3 / 5);
+
+INSERT INTO Employee(group,num,sex,age) VALUES(01,1,0,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(01,1,1,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(01,2,1,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(01,3,2,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(01,4,0,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(02,1,0,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(03,1,0,10);
+
+
+INSERT INTO Employee(group,num,sex,age) VALUES(01,1,0,10);
+INSERT INTO Employee(group,num,sex,age) VALUES(01,1,1,10);
+
+SELECT sid, sex ,age FROM Student WHERE age < 18;
+SELECT sid, sex ,age FROM Student WHERE age >= 19 && sex == 0;
+SELECT sid ,age FROM Student;
+SELECT * FROM Student;
+
+
+SELECT * FROM Student WHERE age + 7 > 19 + 6 && sid <> 6 / 3 - 1;
+
+
+SELECT sw, age FROM Student WHERE age <= 18;
+SELECT sid,sex FROM Student WHERE ss == 1;
+SELECT sw,  FROM Student WHERE age >= 19 && sex == 0;
+SELECT sid, FROM Student; 
+
+
+SELECT sid, age FROM Student WHERE age < -333;
+
+
+SELECT sid, age FROM Student WHERE age < 18;
+SELECT * FROM Stu;
+
+
+DELETE FROM Student WHERE age <= 18 && age > 14 && sex == 1;
+DELETE FROM Student WHERE sid == 12330012;
+DELETE FROM Student WHERE sex == 1;
+
+
+DELETE FROM Student WHERE age > 4*4 - 4 && sex <> 6 / 3 - 2;
+select * from Student;
+DELETE FROM Student WHERE age + 10 > 24 - 4 && sex <> 1;
+select * from Student;
+
+DELETE FROM StudentP WHERE age < 0;
+DELETE FROM Student WHERE sid == 12330012;
+select * from Student;
+DELETE FROM Student WHERE age < 18 && age > 14 && sex == 1;
+select * from Student;
+DELETE FROM Student8 WHERE age + 7 > 14 + 6 && sid <> 6 / 3 - 2;
+DELETE FROM Student WHERE nothing > 1 && sid <> 6 / 3 - 2;
+select * from Student;
+DELETE FROM Student WHERE nothing;
+select * from Student;
+DELETE FROM Student WHAABB;
+
+DELETE FROM Student;
+select * from Student;

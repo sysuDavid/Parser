@@ -1,0 +1,830 @@
+#include <iostream>
+#include "Parser.h"
+using namespace std;
+
+//construct function
+Parser::Parser()
+{
+	sql = new SQL();
+	hasPrimaryKey = false;
+	token = new Token();
+	lexer = new ZZlexer();
+	this->tag = 1;
+}
+
+void Parser::setPath_Tag(int tag, const char* path)
+{
+	this->tag = tag;
+	if (tag == 2)
+		lexer->readFromFile(path);
+}
+
+//词法分析入口
+void Parser::program()
+{
+	move();
+	while (token->tag != EEOF)
+	{
+		//四种语句
+		try
+		{
+			switch (token->tag)
+			{
+			case CREATE: creates();
+				break;
+			case INSERT: inserts();
+				break;
+			case DELETE: deletes();
+				break;
+			case SELECT: querys();
+				break;
+			default:
+				error("syntax error");
+				break;
+			}
+		}
+		catch (WrongTypeException)
+		{
+			while(token->tag != EEOS && token->tag != EEOF) 
+				move();
+			if (token->tag == EEOS)
+				move();
+		}
+	}  
+}
+
+//建表函数
+void Parser::creates()
+{
+	try
+	{
+		match(CREATE);
+		match(TABLE);
+		if (token->tag == ID)
+		{
+			vector<Column> colomns;
+			string table = token->lexeme;
+			move();
+			match(LP);
+			colomns = decl_list();
+			match(RP);
+			match(EEOS);
+			//			if (primaryKeys.size() != 0)
+			//				cout << primaryKeys[0] << endl;
+			cout << (sql->create(table, colomns, primaryKeys) ? "Create Table Succeed!" : "Create Table Failed!") << endl;
+			hasPrimaryKey = false;
+			primaryKeys.clear();
+			return;
+		}
+		error("syntax error");
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+//插入函数
+void Parser::inserts()
+{
+	try
+	{
+		match(INSERT);
+		match(INTO);
+		if (token->tag == ID)
+		{
+			string table = token->lexeme;
+			move();
+			match(LP);
+			vector<string> ids = column_list();
+			match(RP);
+			match(VALUES);
+			match(LP);
+			vector<int> values = value_list();
+			match(RP);
+			match(EEOS);
+			cout << (sql->insert(table, ids, values) ? "Insert Succeed!" : "Insert Failed!") << endl;
+			return;
+		}
+		error("wrong type error");
+	}
+	catch (WrongTypeException)
+	{
+		while (token->tag != EEOS)
+			move();
+		move();
+	}
+}
+
+//删除函数
+void Parser::deletes()
+{
+	try
+	{
+		match(DELETE);
+		match(FROM);
+		if (token->tag == ID)
+		{
+			string table = token->lexeme;
+			move();
+			if (token->tag == WHERE)
+			{
+				move();
+				vector<Token> tokens = disjunct();
+				move();
+				cout << (sql->deletes(table, tokens) ? "Delete Succeed!" : "Delete Failed!") << endl;
+				return;
+			}
+			match(EEOS);
+			cout << (sql->deletes(table) ? "Delete Succeed!" : "Delete Failed!") << endl;
+			return;
+		}
+		error("Wrong type error");
+	}
+	catch (WrongTypeException)
+	{
+		while (token->tag != EEOS)
+			move();
+	}
+}
+
+//查询函数
+void Parser::querys()
+{
+	try
+	{
+		move();
+		vector<string> ids;
+		switch (token->tag)
+		{
+		case ID: ids = column_list();
+			break;
+		case STAR: ids.push_back("*");
+			move();;
+			break;
+		default: error("Wrong type error");
+			break;
+		}
+		match(FROM);
+		if (token->tag == ID)
+		{
+			string table = token->lexeme;
+			move();
+			if (token->tag == WHERE)
+			{
+				move();
+				vector<Token> tokens = disjunct();
+				cout << (sql->select(table, ids, tokens) ? "Query Succeed!" : "Query Failed!") << endl;
+				move();
+			}
+			else if (token->tag == EEOS)
+			{
+				move();
+				cout << (sql->select(table, ids) ? "Query Succeed!" : "Query Failed!") << endl;
+			}
+			else
+			{
+				error("Wrong type error");
+			}
+		}
+		else
+		{
+			error("Wrong type error");
+		}
+	}
+	catch (WrongTypeException)
+	{
+		while (token->tag != EEOS)
+			move();
+	}
+}
+
+//建表函数参数列
+vector<Column> Parser::decl_list()
+{
+	try
+	{
+		vector<Column> columns;
+		Column column = decl();
+		if (column.getName().compare("") != 0)
+			columns.push_back(column);
+		if (token->tag == COMMA)
+		{
+			vector<Column> temp = declA();
+			columns.insert(columns.end(), temp.begin(), temp.end());
+		}
+		return columns;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+//
+Column Parser::decl()
+{
+	try
+	{
+		Column column;
+		vector<string> temp;
+		switch (token->tag)
+		{
+		case ID:
+			column.setName(token->lexeme);
+			move();
+			match(INT);
+			if (token->tag == DEFAULT)
+				column.setDefaultValue(default_spec());
+			break;
+		case PRIMARY:
+			move();
+			match(KEY);
+			match(LP);
+			temp = column_list();
+			if (hasPrimaryKey)
+			{
+				error("duplicate primary key");
+			}
+			primaryKeys.insert(primaryKeys.end(), temp.begin(), temp.end());
+			match(RP);
+			hasPrimaryKey = true;
+			break;
+		default:
+			error("Wrong type error");
+			break;
+		}
+		return column;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Column> Parser::declA()
+{
+	try
+	{
+		move();
+		vector<Column> columns;
+		Column column = decl();
+		if (column.getName().compare("") != 0)
+			columns.push_back(column);
+		if (token->tag == COMMA)
+		{
+			vector<Column> temp = declA();
+			if (!temp.empty())
+				columns.insert(columns.end(), temp.begin(), temp.end());
+		}
+		return columns;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+int Parser::default_spec()
+{
+	try
+	{
+		match(DEFAULT);
+		match(ASN);
+		return simple_expr();
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<string> Parser::column_list()
+{
+	try
+	{
+		vector<string> ids;
+		ids.push_back(token->lexeme);
+		move();
+		if (token->tag == COMMA)
+		{
+			vector<string> temp = column_llistB();
+			ids.insert(ids.end(), temp.begin(), temp.end());
+		}
+		return ids;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<string> Parser::column_llistB()
+{
+	try
+	{
+		move();
+		vector<string> ids;
+		if (token->tag != ID)
+			error("wrong type error");
+		ids.push_back(token->lexeme);
+		move();
+		if (token->tag == COMMA)
+		{
+			vector<string> temp = column_llistB();
+			ids.insert(ids.end(), temp.begin(), temp.end());
+		}
+		return ids;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<int> Parser::value_list()
+{
+	try
+	{
+		vector<int> nums;
+		nums.push_back(simple_expr());
+		if (token->tag == COMMA)
+		{
+			vector<int> temp = value_listC();
+			nums.insert(nums.end(), temp.begin(), temp.end());
+		}
+		return nums;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<int> Parser::value_listC()
+{
+	try
+	{
+		move();
+		vector<int> nums;
+		nums.push_back(simple_expr());
+		if (token->tag == COMMA)
+		{
+			vector<int> temp = value_listC();
+			nums.insert(nums.end(), temp.begin(), temp.end());
+		}
+		return nums;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+int Parser::simple_expr()
+{
+	try
+	{
+		int total = simple_term();
+		if (token->tag == MINUS || token->tag == PLUS)
+		{
+			vector<Token> tokens = simple_termF();
+			for (int i = 0; i < tokens.size(); i++)
+			{
+				total = tokens[i].tag == MINUS ? total - tokens[++i].value : total + tokens[++i].value;
+			}
+		}
+		return total;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+int Parser::simple_term()
+{
+	try
+	{
+		int total = simple_unary();
+		if (token->tag == STAR || token->tag == DIV)
+		{
+			vector<Token> tokens = simple_unaryG();
+			for (int i = 0; i < tokens.size(); i++)
+			{
+				if (tokens[i].tag == STAR)
+				{
+					total *= tokens[++i].value;
+				}
+				else
+				{
+					if (tokens[++i].value == 0)
+						error("divide by zero");
+					total /= tokens[i].value;
+				}
+			}
+		}
+		return total;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::simple_termF()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens.push_back(*token);
+		move();
+		Token newToken(simple_term());
+		tokens.push_back(newToken);
+		switch (token->tag)
+		{
+		case MINUS:
+		case PLUS:
+			temp = simple_termF();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+			break;
+		default:
+			break;
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+int Parser::simple_unary()
+{
+	try
+	{
+		int total = 0;
+		switch (token->tag)
+		{
+		case LP:
+			move();
+			total = simple_expr();
+			match(RP);
+			break;
+		case MINUS:
+			move();
+			total = 0 - simple_unary();
+			break;
+		case PLUS:
+			move();
+			total = simple_unary();
+			break;
+		case NUM:
+			total = token->value;
+			move();
+			break;
+		default:
+			error("Wrong type error");
+		}
+		return total;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::simple_unaryG()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens.push_back(*token);
+		move();
+		Token newToken(simple_unary());
+		tokens.push_back(newToken);
+		switch (token->tag)
+		{
+		case STAR:
+		case DIV:
+			temp = simple_unaryG();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+			break;
+		default:
+			break;
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::disjunct()
+{
+	try
+	{
+		vector<Token> tokens = conjunct();
+		if (token->tag == OR)
+		{
+			vector<Token> temp = conjunctH();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		else if (token->tag == EEOS)
+		{
+			tokens.push_back(*token);
+		}
+		else
+		{
+			error("Wrong Type Error");
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::conjunct()
+{
+	try
+	{
+		vector<Token> tokens = bools();
+		vector<Token> temp;
+		if (token->tag == AND)
+		{
+			temp = boolE();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::conjunctH()
+{
+	try
+	{
+		vector<Token> tokens;
+		tokens.push_back(*token);
+		move();
+		vector<Token> temp = conjunct();
+		tokens.insert(tokens.end(), temp.begin(), temp.end());
+		if (token->tag == OR)
+		{
+			temp = conjunctH();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::bools()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		switch (token->tag)
+		{
+		case LP:
+			tokens.push_back(*token);
+			move();
+			temp = disjunct();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+			if (token->tag == RP)
+			{
+				tokens.push_back(*token);
+				move();
+			}
+			else
+			{
+				error("Wrong type error");
+			}
+			break;
+		case NOT:
+			tokens.push_back(*token);
+			move();
+			temp = bools();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+			break;
+		case NUM:
+		case ID:
+		case MINUS:
+		case PLUS:
+			tokens = comp();
+			break;
+		default:
+			error("Wrong type error");
+			break;
+		}
+		if (token->tag == AND)
+		{
+			temp = boolE();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::boolE()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens.push_back(*token);
+		move();
+		temp = bools();
+		tokens.insert(tokens.end(),temp.begin(),temp.end());
+		if (token->tag == AND)
+		{
+			temp = boolE();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::comp()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens = expr();
+		if (token->tag > 275 || token->tag < 270)
+			error("Wrong type error");
+		tokens.push_back(*token);
+		move();
+		temp = expr();
+		tokens.insert(tokens.end(), temp.begin(), temp.end());
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::expr()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens = term();
+		if (token->tag == PLUS || token->tag == MINUS)
+		{
+			temp = termF();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::term()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens = unary();
+		if (token->tag == STAR || token->tag == DIV)
+		{
+			temp = unaryG();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::termF()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens.push_back(*token);
+		move();
+		temp = term();
+		tokens.insert(tokens.end(),temp.begin(),temp.end());
+		if (token->tag == PLUS || token->tag == MINUS)
+		{
+			temp = termF();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::unary()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		switch (token->tag)
+		{
+		case ID:
+		case NUM:
+			tokens.push_back(*token);
+			move();
+			break;
+		case MINUS:
+		case PLUS:
+			tokens.push_back(*token);
+			move();
+			temp = unary();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+			break;
+		default:
+			error("Wrong type error");
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+vector<Token> Parser::unaryG()
+{
+	try
+	{
+		vector<Token> tokens;
+		vector<Token> temp;
+		tokens.push_back(*token);
+		move();
+		temp = unary();
+		tokens.insert(tokens.end(),temp.begin(),temp.end());
+		if (token->tag == STAR || token->tag == DIV)
+		{
+			temp = unaryG();
+			tokens.insert(tokens.end(), temp.begin(), temp.end());
+		}
+		return tokens;
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
+
+void Parser::move()
+{
+	token->setToken(lexer->scan());
+	//cout << token->tag << endl;
+}
+
+void Parser::error(const std::string s)
+{
+	std::cout << "near Line " << token->ln << " column " << token->col << " : " << s << endl;
+	//cout << token->tag << endl;
+	throw WrongTypeException();
+}
+
+void Parser::match(int t)
+{
+	try
+	{
+		if (t == token->tag) move();
+		else error("syntax error");
+	}
+	catch (WrongTypeException)
+	{
+		throw WrongTypeException();
+	}
+}
